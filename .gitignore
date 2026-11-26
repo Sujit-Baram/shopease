@@ -8,3 +8,11 @@ id_ed25519*
 logs/
 *.log
 *.tmp
+
+# old codebase
+app/
+cron/
+nginx/
+scripts/
+systemd/
+.gitignore
