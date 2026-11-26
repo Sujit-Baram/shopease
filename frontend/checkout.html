@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checkout | ShopEase</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+  <main class="container">
+    <h1 class="page-title">Checkout</h1>
+    <div class="two-col">
+      <form id="form" class="panel" novalidate>
+        <h3 style="margin-top:0">Delivery details</h3>
+        <label for="name">Full name</label>
+        <input id="name" required autocomplete="name">
+        <label for="email">Email</label>
+        <input id="email" type="email" required autocomplete="email">
+        <label for="phone">Mobile number</label>
+        <input id="phone" type="tel" required autocomplete="tel" placeholder="10-digit mobile number">
+        <label for="address">Delivery address</label>
+        <textarea id="address" required autocomplete="street-address"></textarea>
+        <p style="color:var(--muted);font-size:13px">Payment: cash on delivery (this is a demo store, no real payment is taken).</p>
+        <div id="message"></div>
+        <button id="place" class="btn" type="submit" style="width:100%">Place order</button>
+      </form>
+      <div class="panel">
+        <h3 style="margin-top:0">Your order</h3>
+        <div id="summary">Loading...</div>
+      </div>
+    </div>
+  </main>
+  <footer id="site-footer"></footer>
+
+  <script src="js/common.js"></script>
+  <script>
+    renderLayout("cart");
+    const cart = getCart();
+    if (!cart.length) location.href = "cart.html";
+
+    Promise.all(cart.map((l) => api("/products/" + l.id))).then((products) => {
+      let total = 0;
+      const lines = products.map((p, i) => {
+        total += p.price * cart[i].qty;
+        return `<div class="summary-row"><span>${p.emoji} ${escapeHtml(p.name)} &times; ${cart[i].qty}</span><span>${rupees(p.price * cart[i].qty)}</span></div>`;
+      }).join("");
+      document.getElementById("summary").innerHTML = lines +
+        `<div class="summary-row total"><span>Total</span><span>${rupees(total)}</span></div>`;
+    }).catch((err) => showMessage(document.getElementById("summary"), err.message));
+
+    document.getElementById("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const button = document.getElementById("place");
+      button.disabled = true;
+      button.textContent = "Placing order...";
+      const customer = {
+        name: document.getElementById("name").value,
+        email: document.getElementById("email").value,
+        phone: document.getElementById("phone").value,
+        address: document.getElementById("address").value,
+      };
+      try {
+        const order = await api("/orders", {
+          method: "POST",
+          body: JSON.stringify({ customer, items: getCart().map((l) => ({ product_id: l.id, qty: l.qty })) }),
+        });
+        saveCart([]);
+        location.href = `order.html?id=${order.id}&email=${encodeURIComponent(customer.email)}&new=1`;
+      } catch (err) {
+        showMessage(document.getElementById("message"), err.message);
+        button.disabled = false;
+        button.textContent = "Place order";
+      }
+    });
+  </script>
+</body>
+</html>

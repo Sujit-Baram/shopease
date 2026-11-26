@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Product | ShopEase</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+  <main class="container">
+    <div id="message"></div>
+    <div id="product"></div>
+  </main>
+  <footer id="site-footer"></footer>
+
+  <script src="js/common.js"></script>
+  <script>
+    renderLayout("shop");
+    const id = Number(new URLSearchParams(location.search).get("id"));
+    let qty = 1;
+
+    async function load() {
+      try {
+        const p = await api("/products/" + id);
+        document.title = p.name + " | ShopEase";
+        document.getElementById("product").innerHTML = `
+          <p style="margin-top:24px"><a href="index.html">&larr; Back to shop</a></p>
+          <div class="detail">
+            <div class="thumb ${escapeHtml(p.category)}">${p.emoji}</div>
+            <div>
+              <span class="cat" style="color:var(--muted);text-transform:uppercase;font-size:13px">${escapeHtml(p.category)}</span>
+              <h1 style="margin:6px 0 12px">${escapeHtml(p.name)}</h1>
+              <div class="price" style="font-size:30px">${rupees(p.price)}</div>
+              <p>${stockLabel(p.stock)}</p>
+              <p style="color:var(--muted);line-height:1.6">${escapeHtml(p.description)}</p>
+              <div style="display:flex;gap:14px;align-items:center;margin-top:24px">
+                <div class="qty"><button id="minus">&minus;</button><span id="qty">1</span><button id="plus">+</button></div>
+                <button id="add" class="btn" ${p.stock <= 0 ? "disabled" : ""}>Add to cart</button>
+              </div>
+              <div id="added"></div>
+            </div>
+          </div>`;
+        const max = Math.min(10, p.stock);
+        document.getElementById("minus").onclick = () => { qty = Math.max(1, qty - 1); document.getElementById("qty").textContent = qty; };
+        document.getElementById("plus").onclick = () => { qty = Math.min(max, qty + 1); document.getElementById("qty").textContent = qty; };
+        document.getElementById("add").onclick = () => {
+          addToCart(p.id, qty);
+          showMessage(document.getElementById("added"), `Added ${qty} to your cart.`, "ok");
+        };
+      } catch (err) {
+        showMessage(document.getElementById("message"), err.message);
+      }
+    }
+    load();
+  </script>
+</body>
+</html>

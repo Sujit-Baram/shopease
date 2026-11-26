@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ShopEase: online shopping made easy</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header id="site-header"></header>
+
+  <section class="hero">
+    <div class="container">
+      <span class="badge-sale">BIG SALE: up to 40% off</span>
+      <h1>Everything you need, delivered.</h1>
+      <p>Electronics, fashion and home essentials at honest prices.</p>
+    </div>
+  </section>
+
+  <main class="container">
+    <div class="toolbar">
+      <input id="search" class="search" type="search" placeholder="Search products, e.g. watch">
+      <div id="categories"></div>
+    </div>
+    <div id="message"></div>
+    <div id="products" class="grid"></div>
+  </main>
+
+  <footer id="site-footer"></footer>
+
+  <script src="js/common.js"></script>
+  <script>
+    renderLayout("shop");
+    let activeCategory = "";
+    let searchTimer = null;
+
+    async function loadCategories() {
+      const categories = await api("/categories");
+      const box = document.getElementById("categories");
+      box.innerHTML = ["All", ...categories]
+        .map((c) => `<button class="chip ${c === "All" ? "active" : ""}" data-cat="${c === "All" ? "" : escapeHtml(c)}">${escapeHtml(c)}</button>`)
+        .join(" ");
+      box.querySelectorAll(".chip").forEach((chip) => chip.addEventListener("click", () => {
+        box.querySelectorAll(".chip").forEach((c) => c.classList.remove("active"));
+        chip.classList.add("active");
+        activeCategory = chip.dataset.cat;
+        loadProducts();
+      }));
+    }
+
+    async function loadProducts() {
+      const params = new URLSearchParams();
+      if (activeCategory) params.set("category", activeCategory);
+      const q = document.getElementById("search").value.trim();
+      if (q) params.set("q", q);
+      const grid = document.getElementById("products");
+      try {
+        const products = await api("/products?" + params.toString());
+        if (!products.length) {
+          grid.innerHTML = '<div class="empty">No products match your search.</div>';
+          return;
+        }
+        grid.innerHTML = products.map((p) => `
+          <div class="card">
+            <a href="product.html?id=${p.id}" class="thumb ${escapeHtml(p.category)}">${p.emoji}</a>
+            <div class="card-body">
+              <span class="cat">${escapeHtml(p.category)}</span>
+              <a href="product.html?id=${p.id}"><h3>${escapeHtml(p.name)}</h3></a>
+              <span class="price">${rupees(p.price)}</span>
+              ${stockLabel(p.stock)}
+              <button class="btn" data-id="${p.id}" ${p.stock <= 0 ? "disabled" : ""}>Add to cart</button>
+            </div>
+          </div>`).join("");
+        grid.querySelectorAll("button[data-id]").forEach((btn) => btn.addEventListener("click", () => {
+          addToCart(Number(btn.dataset.id));
+          btn.textContent = "Added ✓";
+          setTimeout(() => { btn.textContent = "Add to cart"; }, 1200);
+        }));
+      } catch (err) {
+        showMessage(document.getElementById("message"), "Could not load products: " + err.message);
+      }
+    }
+
+    document.getElementById("search").addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(loadProducts, 250);
+    });
+    loadCategories().catch(() => {});
+    loadProducts();
+  </script>
+</body>
+</html>
